@@ -1,0 +1,14 @@
+Find the name of your MySQL container using:
+run below command
+[docker exec -it <container_name> mysql -u anand -p] --> here anand is schema name
+ enter password.
+step3: use student_microservice
+step4: show tables;
+step5: select * from student;
+
+
+
+using docker desktop:
+
+step1: mysql -u root -p
+Step2: enter password

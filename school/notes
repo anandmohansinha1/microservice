@@ -5,3 +5,10 @@ No serializer found for class com.anand.school.dto.Student and no properties dis
  (through reference chain: com.anand.school.dto
 
  Solution: lombok was not working , so i added getter and setter in student
+
+
+ ======================================
+beans.factory.BeanDefinitionStoreException: Invalid bean definition with name 'com.anand.school.client.StudentClient' defined in null: Could not resolve placeholder 'application.config.gateway-url' in value "http://${application.config.gateway-url}"
+
+Root cause: Spring Boot tried to start the StudentClient bean,
+            but when it saw ${application.config.gateway-url}, it couldn’t find any value for it in your configuration files.

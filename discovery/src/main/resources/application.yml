@@ -1,6 +1,16 @@
 spring:
-  config:
-    import: optional:configserver:http://localhost:8888
   application:
     name: discovery
+  config:
+    import: optional:configserver:http://config-server:8888
+  cloud:
+    config:
+      retry:
+        max-attempts: 10
+        max-interval: 5000
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

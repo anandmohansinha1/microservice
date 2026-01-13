@@ -1,0 +1,36 @@
+services:
+  config-server:
+    image: anandmohansinha/configserver:latest
+    ports:
+      - "8888:8888"
+    networks:
+      - microservice-network
+
+
+  students:
+    image: anandmohansinha/students:latest
+    ports:
+      - "8090:8090"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/student_microservice?characterEncoding=UTF-8
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=test
+    depends_on:
+      - mysql-db
+      - configserver
+    networks:
+      - microservice-network
+
+  schools:
+    image: anandmohansinha/schools:latest
+    ports:
+      - "8070:8070"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/student_microservice?characterEncoding=UTF-8
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=test
+    depends_on:
+      - mysql-db
+      - config-server
+    networks:
+      - microservice-network

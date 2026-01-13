@@ -1,0 +1,119 @@
+#version: '3.8'
+
+services:
+  config-server:
+    build:
+      context: config-server
+    image: config-server
+    ports:
+      - "8888:8888"
+    networks:
+      - microservice-network
+    environment:
+      - SPRING_PROFILES_ACTIVE=native
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  discovery:
+    build:
+      context: discovery
+    image: discovery
+    ports:
+      - "8761:8761"
+    depends_on:
+      config-server:
+        condition: service_healthy
+    networks:
+      - microservice-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: gateway
+    image: gateway
+    ports:
+      - "8222:8222"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+    networks:
+      - microservice-network
+    restart: unless-stopped
+
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=test
+      - MYSQL_DATABASE=student_microservice
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - microservice-network
+
+  students:
+    build:
+      context: student
+    image: students
+    ports:
+      - "8090:8090"
+    environment:
+      - SERVER_PORT=8090
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/student_microservice?characterEncoding=UTF-8
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=test
+    depends_on:
+      - mysql-db
+      - config-server
+      - discovery
+    networks:
+      - microservice-network
+    restart: unless-stopped
+
+  schools:
+    build:
+      context: school
+    image: schools
+    ports:
+      - "8070:8070"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-db:3306/student_microservice?characterEncoding=UTF-8
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=test
+    depends_on:
+      - mysql-db
+      - config-server
+      - discovery
+    networks:
+      - microservice-network
+    restart: unless-stopped
+
+# https://www.youtube.com/watch?v=DwWkjEwsI4Q
+
+
+  zipkin:
+    container_name: zipkin
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - microservice-network
+
+volumes:
+  mysql_data:
+
+networks:
+  microservice-network:

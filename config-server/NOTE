@@ -1,0 +1,157 @@
+when i am running this command
+docker run -p 8888:8888 config-server
+i am getting below error
+Unsatisfied dependency expressed through method 'searchPathCompositeEnvironmentRepository' parameter 0: Error creating bean with name 'defaultEnvironmentRepository' defined in class path resource [org/springframework/cloud/config/server/config/DefaultRepositoryConfiguration.class]: You need to configure a uri for the git repository.
+2026-01-13T05:23:12.413Z  INFO 1 --- [config] [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+2026-01-13T05:23:12.460Z  INFO 1 --- [config] [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-01-13T05:23:12.505Z ERROR 1 --- [config] [           main] o.s.b.d.LoggingFailureAnalysisReporter   :
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Invalid config server configuration.
+
+Action:
+
+If you are using the git profile, you need to set a Git URI in your configuration.  If you have set spring.cloud.config.server.bootstrap=true, you need to use a composite configuration.
+
+***********************************************************************
+solution:
+This error is expected behavior 👍 — your Config Server is starting correctly, but Spring Cloud Config Server must know where to read configuration files from.
+
+Right now, no backend (Git / Native / Vault etc.) is configured, so it fails at startup.
+
+Use Git Repository (Most Common – Production)
+==============================================
+server:
+  port: 8888
+
+spring:
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/your-org/config-repo
+          default-label: main
+          clone-on-start: true
+
+
+
+2️⃣ Rebuild Docker Image And RUN
+-----------------------------
+mvn clean package
+docker build -t config-server .
+docker run -p 8888:8888 config-server  --- change it
+
+
+Test Config Server
+http://localhost:8888/students/default
+http://localhost:8888/schools/default
+http://localhost:8888/discovery/default
+
+***************************************************************
+i am getting below error while running gateway service
+***************************************************************
+    main] c.n.d.s.t.d.RedirectingEurekaHttpClient  :
+Request execution error. endpoint=DefaultEndpoint{ serviceUrl='http://localhost:8761/eureka/},
+exception=I/O error on GET request for "http://localhost:8761/eureka/apps/":
+Connect to http://localhost:8761 [localhost/127.0.0.1, localhost/0:0:0:0:0:0:0:1]
+failed: Connection refused stacktrace=org.springframework.web.client.ResourceAccessException:
+I/O error on GET request for "http://localhost:8761/eureka/apps/":
+Connect to http://localhost:8761 [localhost/127.0.0.1, localhost/0:0:0:0:0:0:0:1] failed:
+Connection refused
+
+
+Solution:
+You are NOT explicitly using localhost, but Spring is still trying to call localhost:8761.
+
+Let me explain why this happens, and then give you the exact fix.
+
+Your gateway.yml
+eureka:
+  client:
+    register-with-eureka: false
+
+  You did NOT define:
+
+  eureka.client.service-url.defaultZone
+
+👉 What Spring Does Internally
+
+When defaultZone is not specified, Spring Cloud Netflix uses this DEFAULT value:
+
+http://localhost:8761/eureka
+So even though you didn’t write localhost, Spring added it automatically.
+
+That’s exactly why your logs show:
+
+GET http://localhost:8761/eureka/apps/
+Connection refused
+
+
+Key Rule (MEMORIZE)
+
+❗ If Eureka client is on the classpath
+❗ And defaultZone is missing
+👉 Spring assumes localhost:8761
+
+
+
+
+correct fix:
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://discovery:8761/eureka
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~````
+After changing gateway.yml do i need to build it again?
+
+NO: You did:
+
+    Changed gateway.yml in Config Server
+
+    Did NOT change:
+      Gateway Java code
+      Gateway Dockerfile
+      Gateway JAR
+
+    👉 That means Docker image has NOT changed.
+
+🧠 Rule of Thumb (Memorize This)
+❌ Rebuild NOT required when:
+
+You change config-server config files
+You change .yml in Git-backed config repo
+You change environment variables via Config Server
+
+✅ Rebuild required ONLY when:
+
+Java code changes
+application.yml inside the service changes
+pom.xml changes
+Dockerfile changes
+
+
+
+🧠 Rule to Memorize (Very Important)
+-------------------------------------
+Change type	Rebuild needed?
+------------------------------
+application.yml inside service	✅ YES
+Java code	✅ YES
+pom.xml	✅ YES
+Dockerfile	✅ YES
+Config Server config (discovery.yml)	❌ NO
+Git-backed config repo	❌ NO
+
+
